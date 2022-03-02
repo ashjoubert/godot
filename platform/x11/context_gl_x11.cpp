@@ -29,12 +29,16 @@
 /**************************************************************************/
 
 #include "context_gl_x11.h"
+#include "core/color.h"
+#include "core/project_settings.h"
+#include "main/splash.gen.h"
 
 #ifdef X11_ENABLED
 #if defined(OPENGL_ENABLED)
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <climits>
 
 #define GLX_GLXEXT_PROTOTYPES
 #include <GL/glx.h>
@@ -129,26 +133,26 @@ Error ContextGL_X11::initialize() {
 
 	XSetWindowAttributes swa;
 	swa.event_mask = StructureNotifyMask;
+	swa.border_pixmap = None;
 	swa.border_pixel = 0;
-	unsigned long valuemask = CWBorderPixel | CWColormap | CWEventMask;
+	swa.background_pixmap = None;
+	swa.background_pixel = 0;
+	unsigned long valuemask = CWBorderPixel | CWBackPixel | CWColormap | CWEventMask;
 
 	if (OS::get_singleton()->is_layered_allowed()) {
 		GLXFBConfig *fbc = glXChooseFBConfig(x11_display, DefaultScreen(x11_display), visual_attribs_layered, &fbcount);
 		ERR_FAIL_COND_V(!fbc, ERR_UNCONFIGURED);
-
 		for (int i = 0; i < fbcount; i++) {
 			vi = (XVisualInfo *)glXGetVisualFromFBConfig(x11_display, fbc[i]);
 			if (!vi) {
 				continue;
 			}
-
 			XRenderPictFormat *pict_format = XRenderFindVisualFormat(x11_display, vi->visual);
 			if (!pict_format) {
 				XFree(vi);
 				vi = nullptr;
 				continue;
 			}
-
 			fbconfig = fbc[i];
 			if (pict_format->direct.alphaMask > 0) {
 				break;
@@ -156,18 +160,10 @@ Error ContextGL_X11::initialize() {
 		}
 		XFree(fbc);
 		ERR_FAIL_COND_V(!fbconfig, ERR_UNCONFIGURED);
-
-		swa.background_pixmap = None;
-		swa.background_pixel = 0;
-		swa.border_pixmap = None;
-		valuemask |= CWBackPixel;
-
 	} else {
 		GLXFBConfig *fbc = glXChooseFBConfig(x11_display, DefaultScreen(x11_display), visual_attribs, &fbcount);
 		ERR_FAIL_COND_V(!fbc, ERR_UNCONFIGURED);
-
 		vi = glXGetVisualFromFBConfig(x11_display, fbc[0]);
-
 		fbconfig = fbc[0];
 		XFree(fbc);
 	}
@@ -191,7 +187,6 @@ Error ContextGL_X11::initialize() {
 				GLX_CONTEXT_FLAGS_ARB, GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB /*|GLX_CONTEXT_DEBUG_BIT_ARB*/,
 				None
 			};
-
 			p->glx_context = glXCreateContextAttribsARB(x11_display, fbconfig, nullptr, true, context_attribs);
 			ERR_FAIL_COND_V(ctxErrorOccurred || !p->glx_context, ERR_UNCONFIGURED);
 			p->glx_context_offscreen = glXCreateContextAttribsARB(x11_display, fbconfig, nullptr, true, context_attribs);
@@ -199,6 +194,18 @@ Error ContextGL_X11::initialize() {
 	}
 
 	swa.colormap = XCreateColormap(x11_display, RootWindow(x11_display, vi->screen), vi->visual, AllocNone);
+    // same logic as Main::setup2
+#ifdef JAVASCRIPT_ENABLED
+    Color background_color = GLOBAL_DEF("rendering/environment/default_clear_color", Color(0.3, 0.3, 0.3))
+#else
+    Color background_color = GLOBAL_DEF("application/boot_splash/bg_color", boot_splash_bg_color);
+#endif
+	XColor background;
+	background.red = (unsigned short) (USHRT_MAX * background_color.r + 0.5f);
+	background.green = (unsigned short) (USHRT_MAX * background_color.g + 0.5f);
+	background.blue = (unsigned short) (USHRT_MAX * background_color.b + 0.5f);
+	XAllocColor(x11_display, swa.colormap, &background);
+	swa.background_pixel = background.pixel;
 	x11_window = XCreateWindow(x11_display, RootWindow(x11_display, vi->screen), 0, 0, OS::get_singleton()->get_video_mode().width, OS::get_singleton()->get_video_mode().height, 0, vi->depth, InputOutput, vi->visual, valuemask, &swa);
 	XStoreName(x11_display, x11_window, "Godot Engine");
 
