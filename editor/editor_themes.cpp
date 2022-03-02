@@ -1119,16 +1119,20 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 
 	// TooltipPanel
 	Ref<StyleBoxFlat> style_tooltip = style_popup->duplicate();
-	float v = MAX(border_size * EDSCALE, 1.0);
+	float v = 6.0;
 	style_tooltip->set_default_margin(MARGIN_LEFT, v);
 	style_tooltip->set_default_margin(MARGIN_TOP, v);
 	style_tooltip->set_default_margin(MARGIN_RIGHT, v);
 	style_tooltip->set_default_margin(MARGIN_BOTTOM, v);
-	style_tooltip->set_bg_color(Color(mono_color.r, mono_color.g, mono_color.b, 0.9));
-	style_tooltip->set_border_width_all(border_width);
-	style_tooltip->set_border_color(mono_color);
-	theme->set_color("font_color", "TooltipLabel", font_color.inverted());
-	theme->set_color("font_color_shadow", "TooltipLabel", mono_color.inverted() * Color(1, 1, 1, 0.1));
+	style_tooltip->set_bg_color(Color(1.0, 0.8, 0.0, 1.0));
+	style_tooltip->set_border_width_all(0);
+	style_tooltip->set_border_color(Color(0.0, 0.0, 0.0, 0.0));
+	style_tooltip->set_shadow_size(0);
+	style_tooltip->set_shadow_color(Color(0.0, 0.0, 0.0, 0.0));
+	style_tooltip->set_corner_radius_all(4);
+	style_tooltip->set_anti_aliased(false);
+	theme->set_color("font_color", "TooltipLabel", font_color);
+	theme->set_color("font_color_shadow", "TooltipLabel", Color(0.0, 0.0, 0.0, 0.0));
 	theme->set_stylebox("panel", "TooltipPanel", style_tooltip);
 
 	// PopupPanel
